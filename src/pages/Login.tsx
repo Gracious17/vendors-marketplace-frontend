@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Calendar, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
-import Button from '../components/ui/Button';
-import Input from '../components/ui/Input';
-import Card from '../components/ui/Card';
+import AuthField from '../components/ui/AuthField';
+
+const stats = [
+  { number: '500+', label: 'Verified vendors' },
+  { number: '10K+', label: 'Events planned' },
+  { number: '4.9', label: 'Average rating' },
+];
 
 const Login: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -13,7 +17,7 @@ const Login: React.FC = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  
+
   const { signIn, loading, error, clearError } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -22,11 +26,9 @@ const Login: React.FC = () => {
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear field error when user starts typing
     if (formErrors[field]) {
       setFormErrors(prev => ({ ...prev, [field]: '' }));
     }
-    // Clear global error
     if (error) {
       clearError();
     }
@@ -51,40 +53,70 @@ const Login: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     try {
       await signIn(formData.email, formData.password);
-      
-      // Navigate based on from parameter or user role
+
       if (from) {
         navigate(from, { replace: true });
       } else {
-        // Will be handled by the auth state change and redirect logic
         navigate('/dashboard', { replace: true });
       }
     } catch (error) {
-      // Error is handled by the store
       console.error('Login failed:', error);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900">Welcome back</h2>
-          <p className="mt-2 text-gray-600">Sign in to your account</p>
+    <div className="lg:h-screen grid lg:grid-cols-2 font-display">
+      {/* Image column */}
+      <div className="hidden lg:block relative bg-carbon h-full overflow-hidden">
+        <img
+          src="https://images.pexels.com/photos/1447252/pexels-photo-1447252.jpeg?auto=compress&cs=tinysrgb&w=1200"
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover grayscale"
+        />
+        <div className="absolute inset-0 bg-carbon/75" />
+        <div className="relative h-full flex flex-col justify-end p-12">
+          <h2 className="font-display font-light text-3xl text-paper mb-3 max-w-sm leading-tight">
+            Find the right vendor for your next event
+          </h2>
+          <p className="text-mist mb-10 max-w-sm">
+            Verified caterers, photographers, venues, and planners in one place.
+          </p>
+          <div className="flex gap-10 pt-8 border-t border-white/10">
+            {stats.map((stat) => (
+              <div key={stat.label}>
+                <div className="text-2xl font-semibold text-paper mb-1">{stat.number}</div>
+                <div className="text-smoke text-sm">{stat.label}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <Card>
-          <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Form column */}
+      <div className="lg:h-full lg:overflow-y-auto bg-paper">
+        <div className="min-h-full flex flex-col justify-center px-6 py-12">
+        <div className="w-full max-w-sm mx-auto">
+          <Link to="/" className="inline-flex items-center space-x-2 mb-10">
+            <Calendar className="h-6 w-6 text-carbon" strokeWidth={1.5} />
+            <span className="text-lg font-semibold text-carbon">
+              VendorHub<span className="text-fiverr-green">.</span>
+            </span>
+          </Link>
+
+          <div className="mb-8">
+            <h1 className="text-3xl font-semibold text-carbon mb-2">Welcome back</h1>
+            <p className="text-graphite">Sign in to your account</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4 flex items-start">
-                <AlertCircle className="h-5 w-5 text-red-400 mt-0.5 mr-3 flex-shrink-0" />
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start">
+                <AlertCircle className="h-5 w-5 text-red-400 mt-0.5 mr-3 shrink-0" />
                 <div>
                   <h3 className="text-sm font-medium text-red-800">
                     Sign in failed
@@ -94,7 +126,7 @@ const Login: React.FC = () => {
               </div>
             )}
 
-            <Input
+            <AuthField
               label="Email address"
               type="email"
               value={formData.email}
@@ -106,30 +138,26 @@ const Login: React.FC = () => {
               required
             />
 
-            <div className="relative">
-              <Input
-                label="Password"
-                type={showPassword ? 'text' : 'password'}
-                value={formData.password}
-                onChange={(e) => handleChange('password', e.target.value)}
-                error={formErrors.password}
-                icon={Lock}
-                placeholder="Enter your password"
-                autoComplete="current-password"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-9 text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </button>
-            </div>
+            <AuthField
+              label="Password"
+              type={showPassword ? 'text' : 'password'}
+              value={formData.password}
+              onChange={(e) => handleChange('password', e.target.value)}
+              error={formErrors.password}
+              icon={Lock}
+              placeholder="Enter your password"
+              autoComplete="current-password"
+              required
+              rightElement={
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-smoke hover:text-graphite transition-colors"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              }
+            />
 
             <div className="flex items-center justify-between">
               <div className="flex items-center">
@@ -137,51 +165,55 @@ const Login: React.FC = () => {
                   id="remember-me"
                   name="remember-me"
                   type="checkbox"
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-fiverr-green focus:ring-fiverr-green border-fog rounded"
                 />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
+                <label htmlFor="remember-me" className="ml-2 block text-sm text-graphite">
                   Remember me
                 </label>
               </div>
 
               <Link
                 to="/forgot-password"
-                className="text-sm text-indigo-600 hover:text-indigo-500 transition-colors"
+                className="text-sm text-fiverr-green hover:text-forest-stage transition-colors"
               >
                 Forgot password?
               </Link>
             </div>
 
-            <Button
+            <button
               type="submit"
-              loading={loading}
-              className="w-full"
-              size="lg"
+              disabled={loading}
+              className="w-full flex items-center justify-center px-6 py-3 rounded-lg bg-carbon text-paper font-semibold hover:bg-slate transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Sign In
-            </Button>
+              {loading ? (
+                <span className="h-4 w-4 border-2 border-paper/40 border-t-paper rounded-full animate-spin" />
+              ) : (
+                'Sign In'
+              )}
+            </button>
           </form>
 
-          <div className="mt-6">
+          <div className="mt-8">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
+                <div className="w-full border-t border-mist" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">New to VendorHub?</span>
+                <span className="px-3 bg-paper text-smoke">New to VendorHub?</span>
               </div>
             </div>
 
             <div className="mt-6 text-center">
               <Link
                 to="/register"
-                className="text-indigo-600 hover:text-indigo-500 font-medium transition-colors"
+                className="text-fiverr-green hover:text-forest-stage font-medium transition-colors"
               >
-                Create your account →
+                Create your account &rarr;
               </Link>
             </div>
           </div>
-        </Card>
+        </div>
+        </div>
       </div>
     </div>
   );

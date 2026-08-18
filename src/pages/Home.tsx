@@ -8,7 +8,7 @@ import CTASection from '../components/landing/CTASection';
 
 const Home: React.FC = () => {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen font-display">
       <HeroSection />
       <FeaturesSection />
       <HowItWorksSection />

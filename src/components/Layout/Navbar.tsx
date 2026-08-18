@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Calendar, User, Menu, X, LogOut, Settings, HelpCircle, Shield } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import Button from '../ui/Button';
-import HelpCenter from '../HelpCenter';
 
 const Navbar: React.FC = () => {
   const { user, profile, signOut } = useAuthStore();
@@ -11,7 +10,6 @@ const Navbar: React.FC = () => {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = async () => {
@@ -59,7 +57,6 @@ const Navbar: React.FC = () => {
   ];
 
   return (
-    <>
       <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -92,15 +89,15 @@ const Navbar: React.FC = () => {
                 </Link>
               ))}
               
-              {/* Help Button */}
-              <button
-                onClick={() => setIsHelpOpen(true)}
+              {/* Help Link */}
+              <Link
+                to="/help"
                 className="flex items-center px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                 style={{ transition: 'none' }}
               >
                 <HelpCircle className="h-4 w-4 mr-1" />
                 Help
-              </button>
+              </Link>
             </div>
 
             {/* Desktop Auth Section */}
@@ -145,17 +142,15 @@ const Navbar: React.FC = () => {
                             Admin Panel
                           </Link>
                         )}
-                        <button
-                          onClick={() => {
-                            setIsProfileOpen(false);
-                            setIsHelpOpen(true);
-                          }}
+                        <Link
+                          to="/help"
                           className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => setIsProfileOpen(false)}
                           style={{ transition: 'none' }}
                         >
                           <HelpCircle className="h-4 w-4 mr-2" />
                           Help Center
-                        </button>
+                        </Link>
                         <button
                           onClick={() => setIsProfileOpen(false)}
                           className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -232,17 +227,15 @@ const Navbar: React.FC = () => {
                   </Link>
                 ))}
                 
-                <button
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    setIsHelpOpen(true);
-                  }}
+                <Link
+                  to="/help"
+                  onClick={() => setIsMenuOpen(false)}
                   className="flex items-center w-full px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                   style={{ transition: 'none' }}
                 >
                   <HelpCircle className="h-4 w-4 mr-2" />
                   Help Center
-                </button>
+                </Link>
                 
                 {isAuthenticated ? (
                   <div className="border-t border-gray-200 pt-4 mt-4">
@@ -300,14 +293,6 @@ const Navbar: React.FC = () => {
           )}
         </div>
       </nav>
-
-      {/* Help Center Modal */}
-      <HelpCenter
-        isOpen={isHelpOpen}
-        onClose={() => setIsHelpOpen(false)}
-        userRole={profile?.role}
-      />
-    </>
   );
 };
 

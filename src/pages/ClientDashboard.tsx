@@ -8,13 +8,11 @@ import Button from '../components/ui/Button';
 import VendorCard from '../components/VendorCard';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import CurrencySelector from '../components/ui/CurrencySelector';
-import HelpCenter from '../components/HelpCenter';
 
 const ClientDashboard: React.FC = () => {
   const { profile, updateProfile } = useAuthStore();
   const { vendors, loading } = useVendors();
   const [savedVendors, setSavedVendors] = useState<string[]>(['1', '2']); // Mock saved vendors
-  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   const handleSaveVendor = (vendorId: string) => {
     setSavedVendors(prev => 
@@ -63,7 +61,6 @@ const ClientDashboard: React.FC = () => {
   }
 
   return (
-    <>
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
@@ -265,14 +262,15 @@ const ClientDashboard: React.FC = () => {
                     <Filter className="h-4 w-4 mr-2" />
                     Manage Preferences
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start"
-                    onClick={() => setIsHelpOpen(true)}
-                  >
-                    <HelpCircle className="h-4 w-4 mr-2" />
-                    Help & Support
-                  </Button>
+                  <Link to="/help">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start"
+                    >
+                      <HelpCircle className="h-4 w-4 mr-2" />
+                      Help & Support
+                    </Button>
+                  </Link>
                 </div>
               </Card>
 
@@ -290,14 +288,6 @@ const ClientDashboard: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Help Center Modal */}
-      <HelpCenter
-        isOpen={isHelpOpen}
-        onClose={() => setIsHelpOpen(false)}
-        userRole={profile?.role}
-      />
-    </>
   );
 };
 

@@ -55,8 +55,8 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   };
 
   const sidebarClasses = `
-    fixed inset-y-0 left-0 z-50 w-80 bg-white shadow-xl transform transition-transform duration-300 overflow-y-auto
-    lg:relative lg:translate-x-0 lg:shadow-none lg:border-r lg:border-gray-200
+    fixed top-16 bottom-0 left-0 z-40 w-80 bg-paper shadow-xl transform transition-transform duration-300 overflow-y-auto
+    lg:relative lg:top-0 lg:translate-x-0 lg:shadow-none lg:border-r lg:border-mist
     ${isOpen ? 'translate-x-0' : '-translate-x-full'}
   `;
 
@@ -65,7 +65,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
       {/* Overlay for mobile */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          className="fixed inset-0 top-16 bg-black bg-opacity-50 z-30 lg:hidden"
           onClick={onClose}
         />
       )}
@@ -76,18 +76,18 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">
-              <Filter className="h-5 w-5 mr-2 text-gray-600" />
-              <h2 className="text-lg font-semibold text-gray-900">Filters</h2>
+              <Filter className="h-5 w-5 mr-2 text-graphite" strokeWidth={1.5} />
+              <h2 className="text-lg font-semibold text-carbon">Filters</h2>
             </div>
             <div className="flex items-center space-x-2">
               {resultCount !== undefined && (
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-smoke">
                   {resultCount} results
                 </span>
               )}
               <button
                 onClick={onClose}
-                className="lg:hidden p-1 text-gray-400 hover:text-gray-600"
+                className="lg:hidden p-1 text-smoke hover:text-carbon"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -106,7 +106,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 
           {/* Category Filter */}
           <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Category</h3>
+            <h3 className="text-sm font-medium text-carbon mb-3">Category</h3>
             <div className="space-y-2">
               <label className="flex items-center">
                 <input
@@ -114,9 +114,9 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                   name="category"
                   checked={!filters.category}
                   onChange={() => handleCategoryChange(undefined)}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                  className="h-4 w-4 text-fiverr-green focus:ring-fiverr-green border-fog"
                 />
-                <span className="ml-3 text-sm text-gray-700">All Categories</span>
+                <span className="ml-3 text-sm text-graphite">All Categories</span>
               </label>
               {categories.map((category) => (
                 <label key={category} className="flex items-center">
@@ -125,9 +125,9 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                     name="category"
                     checked={filters.category === category}
                     onChange={() => handleCategoryChange(category)}
-                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                    className="h-4 w-4 text-fiverr-green focus:ring-fiverr-green border-fog"
                   />
-                  <span className="ml-3 text-sm text-gray-700">
+                  <span className="ml-3 text-sm text-graphite">
                     {getCategoryLabel(category)}
                   </span>
                 </label>
@@ -137,19 +137,19 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 
           {/* Location Filter */}
           <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Location</h3>
+            <h3 className="text-sm font-medium text-carbon mb-3">Location</h3>
             <input
               type="text"
               placeholder="City or State"
               value={filters.location || ''}
               onChange={(e) => handleLocationChange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-3 py-2 border border-fog rounded-xl focus:outline-none focus:ring-2 focus:ring-fiverr-green/30 focus:border-fiverr-green"
             />
           </div>
 
           {/* Price Range Filter */}
           <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Price Range</h3>
+            <h3 className="text-sm font-medium text-carbon mb-3">Price Range</h3>
             <div className="space-y-3">
               <div className="flex items-center space-x-2">
                 <input
@@ -162,9 +162,9 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                       filters.priceRange?.[1] || 10000
                     )
                   }
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-0 flex-1 min-w-0 px-3 py-2 border border-fog rounded-xl focus:outline-none focus:ring-2 focus:ring-fiverr-green/30 focus:border-fiverr-green"
                 />
-                <span className="text-gray-500">to</span>
+                <span className="shrink-0 text-smoke">to</span>
                 <input
                   type="number"
                   placeholder="Max"
@@ -175,7 +175,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                       parseInt(e.target.value) || 10000
                     )
                   }
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-0 flex-1 min-w-0 px-3 py-2 border border-fog rounded-xl focus:outline-none focus:ring-2 focus:ring-fiverr-green/30 focus:border-fiverr-green"
                 />
               </div>
             </div>
@@ -183,7 +183,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 
           {/* Rating Filter */}
           <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Minimum Rating</h3>
+            <h3 className="text-sm font-medium text-carbon mb-3">Minimum Rating</h3>
             <div className="space-y-2">
               {[4.5, 4.0, 3.5, 3.0].map((rating) => (
                 <label key={rating} className="flex items-center">
@@ -192,9 +192,9 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                     name="rating"
                     checked={filters.rating === rating}
                     onChange={() => handleRatingChange(rating)}
-                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                    className="h-4 w-4 text-fiverr-green focus:ring-fiverr-green border-fog"
                   />
-                  <span className="ml-3 text-sm text-gray-700">
+                  <span className="ml-3 text-sm text-graphite">
                     {rating}+ stars
                   </span>
                 </label>
@@ -205,16 +205,16 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                   name="rating"
                   checked={!filters.rating}
                   onChange={() => handleRatingChange(undefined)}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                  className="h-4 w-4 text-fiverr-green focus:ring-fiverr-green border-fog"
                 />
-                <span className="ml-3 text-sm text-gray-700">Any rating</span>
+                <span className="ml-3 text-sm text-graphite">Any rating</span>
               </label>
             </div>
           </div>
 
           {/* Availability Filter */}
           <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Availability</h3>
+            <h3 className="text-sm font-medium text-carbon mb-3">Availability</h3>
             <div className="space-y-2">
               <label className="flex items-center">
                 <input
@@ -222,9 +222,9 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                   name="availability"
                   checked={filters.availability === true}
                   onChange={() => handleAvailabilityChange(true)}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                  className="h-4 w-4 text-fiverr-green focus:ring-fiverr-green border-fog"
                 />
-                <span className="ml-3 text-sm text-gray-700">Available only</span>
+                <span className="ml-3 text-sm text-graphite">Available only</span>
               </label>
               <label className="flex items-center">
                 <input
@@ -232,9 +232,9 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                   name="availability"
                   checked={filters.availability === undefined}
                   onChange={() => handleAvailabilityChange(undefined)}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                  className="h-4 w-4 text-fiverr-green focus:ring-fiverr-green border-fog"
                 />
-                <span className="ml-3 text-sm text-gray-700">Show all</span>
+                <span className="ml-3 text-sm text-graphite">Show all</span>
               </label>
             </div>
           </div>

@@ -3,33 +3,27 @@ export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
-      animation: {
-        'gradient-x': 'gradient-x 3s ease infinite',
-        'spin-slow': 'spin 20s linear infinite',
-        'float': 'float 3s ease-in-out infinite',
+      colors: {
+        'fiverr-green': '#1dbf73',
+        'forest-stage': '#003912',
+        carbon: '#222325',
+        graphite: '#62646a',
+        paper: '#ffffff',
+        mist: '#dadbdd',
+        fog: '#c5c6c9',
+        slate: '#404145',
+        smoke: '#74767e',
       },
-      keyframes: {
-        'gradient-x': {
-          '0%, 100%': {
-            'background-size': '200% 200%',
-            'background-position': 'left center'
-          },
-          '50%': {
-            'background-size': '200% 200%',
-            'background-position': 'right center'
-          }
-        },
-        float: {
-          '0%, 100%': { transform: 'translateY(0px)' },
-          '50%': { transform: 'translateY(-10px)' }
-        }
+      fontFamily: {
+        display: ['"DM Sans"', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
-      backdropBlur: {
-        xs: '2px',
+      letterSpacing: {
+        display: '-0.06em',
+        heading: '-0.03em',
       },
       boxShadow: {
-        '3xl': '0 35px 60px -12px rgba(0, 0, 0, 0.25)',
-      }
+        card: 'rgba(0, 0, 0, 0.13) 0px 3px 10px 0px',
+      },
     },
   },
   plugins: [],

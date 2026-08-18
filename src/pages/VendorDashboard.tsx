@@ -8,7 +8,6 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import CurrencySelector from '../components/ui/CurrencySelector';
-import HelpCenter from '../components/HelpCenter';
 import { formatCurrency, convertCurrency } from '../lib/utils';
 
 const VendorDashboard: React.FC = () => {
@@ -25,7 +24,6 @@ const VendorDashboard: React.FC = () => {
   } = useVendorDashboard();
 
   const { subscription, fetchSubscription } = useSubscriptionStore();
-  const [isHelpOpen, setIsHelpOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (profile?.id) {
@@ -79,7 +77,6 @@ const VendorDashboard: React.FC = () => {
   const hasActiveSubscription = subscription?.status === 'active';
 
   return (
-    <>
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Header */}
@@ -458,14 +455,15 @@ const VendorDashboard: React.FC = () => {
                     <Calendar className="h-4 w-4 mr-2" />
                     Manage Availability
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    className="w-full justify-start"
-                    onClick={() => setIsHelpOpen(true)}
-                  >
-                    <HelpCircle className="h-4 w-4 mr-2" />
-                    Help & Support
-                  </Button>
+                  <Link to="/help">
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start"
+                    >
+                      <HelpCircle className="h-4 w-4 mr-2" />
+                      Help & Support
+                    </Button>
+                  </Link>
                 </div>
               </Card>
 
@@ -487,14 +485,6 @@ const VendorDashboard: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Help Center Modal */}
-      <HelpCenter
-        isOpen={isHelpOpen}
-        onClose={() => setIsHelpOpen(false)}
-        userRole={profile?.role}
-      />
-    </>
   );
 };
 

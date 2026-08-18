@@ -2,36 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom animations */
-@keyframes gradient-x {
-  0%, 100% {
-    background-size: 200% 200%;
-    background-position: left center;
-  }
-  50% {
-    background-size: 200% 200%;
-    background-position: right center;
-  }
-}
-
-@keyframes spin-slow {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
 @layer base {
   html {
     scroll-behavior: smooth;
@@ -47,18 +17,6 @@
 }
 
 @layer utilities {
-  .animate-gradient-x {
-    animation: gradient-x 3s ease infinite;
-  }
-  
-  .animate-spin-slow {
-    animation: spin-slow 20s linear infinite;
-  }
-  
-  .animate-float {
-    animation: float 3s ease-in-out infinite;
-  }
-  
   .line-clamp-2 {
     overflow: hidden;
     display: -webkit-box;
@@ -85,16 +43,6 @@
 
 /* Custom focus styles for better accessibility */
 @layer components {
-  .glass-effect {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-  }
-  
-  .gradient-text {
-    @apply bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent;
-  }
-  
   .focus-ring {
     @apply focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2;
   }
@@ -142,12 +90,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(to bottom, #8b5cf6, #3b82f6);
+  background: #62646a;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(to bottom, #7c3aed, #2563eb);
+  background: #404145;
 }
 
 /* Remove transitions for reduced motion preference */
@@ -159,11 +107,5 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
-  }
-  
-  .animate-gradient-x,
-  .animate-spin-slow,
-  .animate-float {
-    animation: none !important;
   }
 }

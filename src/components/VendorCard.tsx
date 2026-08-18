@@ -1,9 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Star, Badge, Phone, Heart } from 'lucide-react';
+import { MapPin, Star, Badge, Phone, Heart, Crown } from 'lucide-react';
 import { Vendor } from '../lib/types';
 import { formatCurrency, getCategoryLabel } from '../lib/utils';
-import Card from './ui/Card';
 
 interface VendorCardProps {
   vendor: Vendor;
@@ -30,7 +29,7 @@ const VendorCard: React.FC<VendorCardProps> = ({
   };
 
   return (
-    <Card hover className="group overflow-hidden">
+    <div className="group h-full flex flex-col bg-paper rounded-2xl border border-mist overflow-hidden hover:shadow-card transition-shadow">
       <div className="relative">
         <img
           src={vendor.images[0]}
@@ -38,14 +37,15 @@ const VendorCard: React.FC<VendorCardProps> = ({
           className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
           loading="lazy"
         />
-        <div className="absolute top-3 left-3 flex gap-2">
+        <div className="absolute top-3 left-3 right-14 flex flex-wrap gap-2">
           {vendor.featured && (
-            <span className="px-2 py-1 bg-amber-500 text-white text-xs font-medium rounded-full">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-carbon text-paper text-xs font-medium rounded-full">
+              <Crown className="h-3 w-3" />
               Featured
             </span>
           )}
           {vendor.verified && (
-            <span className="px-2 py-1 bg-emerald-500 text-white text-xs font-medium rounded-full flex items-center">
+            <span className="px-2.5 py-1 bg-paper border border-fiverr-green text-fiverr-green text-xs font-medium rounded-full flex items-center">
               <Badge className="h-3 w-3 mr-1" />
               Verified
             </span>
@@ -56,9 +56,9 @@ const VendorCard: React.FC<VendorCardProps> = ({
             onClick={handleSaveClick}
             className={`
               absolute top-3 right-3 p-2 rounded-full transition-colors
-              ${isSaved 
-                ? 'bg-red-500 text-white hover:bg-red-600' 
-                : 'bg-white/90 text-gray-600 hover:bg-white hover:text-red-500'
+              ${isSaved
+                ? 'bg-red-500 text-white hover:bg-red-600'
+                : 'bg-paper/90 text-graphite hover:bg-paper hover:text-red-500'
               }
             `}
             aria-label={isSaved ? 'Remove from saved' : 'Save vendor'}
@@ -68,50 +68,48 @@ const VendorCard: React.FC<VendorCardProps> = ({
         )}
       </div>
 
-      <div className="p-6">
-        <div className="flex items-start justify-between mb-2">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
-              {vendor.name}
-            </h3>
-            <p className="text-sm text-indigo-600 font-medium">
-              {getCategoryLabel(vendor.category)}
-            </p>
-          </div>
-          <div className="flex items-center">
-            <Star className="h-4 w-4 text-yellow-400 fill-current" />
-            <span className="ml-1 text-sm font-medium text-gray-900">
-              {vendor.rating}
+      <div className="p-4 flex-1 flex flex-col">
+        <div className="mb-2">
+          <div className="flex items-center mb-1">
+            <Star className="h-3.5 w-3.5 text-fiverr-green fill-current" />
+            <span className="ml-1 text-xs font-medium text-carbon">
+              {vendor.rating.toFixed(1)}
             </span>
-            <span className="ml-1 text-sm text-gray-500">
+            <span className="ml-1 text-xs text-smoke">
               ({vendor.reviewCount})
             </span>
           </div>
+          <h3 className="text-base font-semibold text-carbon group-hover:text-fiverr-green transition-colors">
+            {vendor.name}
+          </h3>
+          <p className="text-xs text-fiverr-green font-medium">
+            {getCategoryLabel(vendor.category)}
+          </p>
         </div>
 
-        <div className="flex items-center text-sm text-gray-600 mb-3">
-          <MapPin className="h-4 w-4 mr-1" />
+        <div className="flex items-center text-xs text-graphite mb-2">
+          <MapPin className="h-3.5 w-3.5 mr-1" />
           {vendor.location.city}, {vendor.location.state}
         </div>
 
-        <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+        <p className="text-graphite text-sm mb-3 line-clamp-1">
           {vendor.description}
         </p>
 
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <span className="text-lg font-bold text-gray-900">
+        <div className="mb-4 mt-auto">
+          <div className="flex items-baseline flex-wrap gap-x-1">
+            <span className="text-base font-semibold text-carbon">
               {formatCurrency(vendor.pricing.min || 0, vendor.pricing.currency)} - {formatCurrency(vendor.pricing.max || 0, vendor.pricing.currency)}
             </span>
-            <span className="text-sm text-gray-500 ml-1">
+            <span className="text-xs text-smoke">
               {vendor.pricing.unit || 'per event'}
             </span>
           </div>
           <div className={`
-            px-2 py-1 rounded-full text-xs font-medium
-            ${vendor.availability 
-              ? 'bg-emerald-100 text-emerald-800' 
-              : 'bg-red-100 text-red-800'
+            inline-block mt-2 px-2.5 py-1 rounded-full text-xs font-medium
+            ${vendor.availability
+              ? 'bg-fiverr-green/10 text-fiverr-green'
+              : 'bg-mist/60 text-graphite'
             }
           `}>
             {vendor.availability ? 'Available' : 'Booked'}
@@ -121,21 +119,21 @@ const VendorCard: React.FC<VendorCardProps> = ({
         <div className="flex items-center justify-between">
           <Link
             to={`/vendor/${vendor.id}`}
-            className="text-indigo-600 hover:text-indigo-700 font-medium text-sm transition-colors"
+            className="text-fiverr-green hover:text-forest-stage font-medium text-sm transition-colors"
           >
-            View Details →
+            View Details &rarr;
           </Link>
           <a
             href={`tel:${vendor.contact.phone}`}
             onClick={handlePhoneClick}
-            className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+            className="flex items-center text-graphite hover:text-carbon transition-colors"
           >
             <Phone className="h-4 w-4 mr-1" />
             <span className="text-sm">Call</span>
           </a>
         </div>
       </div>
-    </Card>
+    </div>
   );
 };
 

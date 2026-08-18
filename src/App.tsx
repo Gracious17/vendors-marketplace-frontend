@@ -1,7 +1,9 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
+import ScrollToTop from './components/ScrollToTop';
 import Layout from './components/Layout/Layout';
+import DashboardLayout from './components/Layout/DashboardLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import PublicRoute from './components/PublicRoute';
 import Home from './pages/Home';
@@ -15,6 +17,7 @@ import VendorProfileEdit from './pages/VendorProfileEdit';
 import VendorProfilePreview from './pages/VendorProfilePreview';
 import SubscriptionPage from './pages/SubscriptionPage';
 import AdminDashboard from './pages/AdminDashboard';
+import HelpCenter from './pages/HelpCenter';
 
 function App() {
   const { initialize, initialized } = useAuthStore();
@@ -38,12 +41,14 @@ function App() {
 
   return (
     <Router>
+      <ScrollToTop />
       <Routes>
         <Route path="/" element={<Layout />}>
           {/* Public Routes - Home and Vendors are always accessible */}
           <Route index element={<Home />} />
           <Route path="vendors" element={<VendorListing />} />
           <Route path="vendor/:id" element={<VendorProfile />} />
+          <Route path="help" element={<HelpCenter />} />
           
           {/* Auth Routes - Only redirect from these specific pages */}
           <Route
@@ -63,38 +68,36 @@ function App() {
             }
           />
           
-          {/* Protected Routes */}
-          <Route
-            path="dashboard"
-            element={<Navigate to="/dashboard/client" replace />}
-          />
-          <Route
-            path="dashboard/client"
-            element={
-              <ProtectedRoute requiredRole="client">
-                <ClientDashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="dashboard/vendor"
-            element={
-              <ProtectedRoute requiredRole="vendor">
-                <VendorDashboard />
-              </ProtectedRoute>
-            }
-          />
-          
-          {/* Admin Dashboard Route */}
-          <Route
-            path="dashboard/admin"
-            element={
-              <ProtectedRoute requiredAdmin>
-                <AdminDashboard />
-              </ProtectedRoute>
-            }
-          />
-          
+          {/* Dashboard route group - shares DashboardLayout, no public nav/footer */}
+          <Route path="dashboard" element={<DashboardLayout />}>
+            <Route index element={<Navigate to="/dashboard/client" replace />} />
+            <Route
+              path="client"
+              element={
+                <ProtectedRoute requiredRole="client">
+                  <ClientDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="vendor"
+              element={
+                <ProtectedRoute requiredRole="vendor">
+                  <VendorDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="admin"
+              element={
+                <ProtectedRoute requiredAdmin>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+          </Route>
+
+
           {/* Vendor Profile Management Routes */}
           <Route
             path="vendor-profile/edit"

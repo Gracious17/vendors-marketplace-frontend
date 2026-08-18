@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Edit, MapPin, Star, Badge, Phone, Mail, Globe, CheckCircle, Clock, DollarSign } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { profilesTable, vendorProfilesTable } from '../lib/localDb';
 import { useAuthStore } from '../stores/authStore';
 import { getCategoryLabel, formatCurrency } from '../lib/utils';
 import Button from '../components/ui/Button';
@@ -48,26 +48,11 @@ const VendorProfilePreview: React.FC = () => {
     if (!id) return;
 
     try {
-      // Fetch vendor profile
-      const { data: vendorProfile, error: vendorError } = await supabase
-        .from('vendor_profiles')
-        .select('*')
-        .eq('user_id', id)
-        .maybeSingle();
+      const vendorProfile = vendorProfilesTable.findOne(vp => vp.user_id === id);
+      const basicProfile = profilesTable.findOne(p => p.id === id);
 
-      if (vendorError) throw vendorError;
-
-      // Fetch basic profile info
-      const { data: basicProfile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', id)
-        .maybeSingle();
-
-      if (profileError) throw profileError;
-
-      setVendorData(vendorProfile);
-      setOwnerProfile(basicProfile);
+      setVendorData(vendorProfile ?? null);
+      setOwnerProfile(basicProfile ?? null);
     } catch (err) {
       console.error('Error fetching vendor data:', err);
       setError('Failed to load vendor profile');

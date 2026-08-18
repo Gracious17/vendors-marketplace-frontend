@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import { vendorProfilesTable, vendorStatsTable, vendorInquiriesTable, vendorBookingsTable } from '../lib/localDb';
 import { useAuthStore } from '../stores/authStore';
 
 interface DashboardStats {
@@ -71,106 +71,62 @@ export const useVendorDashboard = () => {
     setError(null);
 
     try {
-      // Fetch vendor profile data
-      const { data: profileData, error: profileError } = await supabase
-        .from('vendor_profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (profileError) {
-        console.warn('Error fetching vendor profile:', profileError);
-      }
-
+      const profileData = vendorProfilesTable.findOne(vp => vp.user_id === user.id);
       if (profileData) {
         setVendorProfile(profileData);
       }
 
-      // Fetch dashboard stats for current month
       const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
-      const { data: statsData, error: statsError } = await supabase
-        .from('vendor_stats')
-        .select('*')
-        .eq('vendor_id', user.id)
-        .eq('month_year', currentMonth)
-        .maybeSingle();
+      let statsData = vendorStatsTable.findOne(
+        s => s.vendor_id === user.id && s.month_year === currentMonth
+      );
 
-      if (statsError) {
-        console.warn('Error fetching stats:', statsError);
-      }
-
-      if (statsData) {
-        setStats({
-          profileViews: statsData.profile_views || 0,
-          inquiries: statsData.inquiries || 0,
-          bookings: statsData.bookings || 0,
-          revenue: `$${(statsData.revenue || 0).toLocaleString()}`,
+      if (!statsData) {
+        statsData = vendorStatsTable.insert({
+          vendor_id: user.id,
+          month_year: currentMonth,
+          profile_views: 0,
+          inquiries: 0,
+          bookings: 0,
+          revenue: 0,
         });
-      } else {
-        // Create initial stats record if it doesn't exist
-        const { error: insertError } = await supabase
-          .from('vendor_stats')
-          .insert({
-            vendor_id: user.id,
-            month_year: currentMonth,
-            profile_views: 0,
-            inquiries: 0,
-            bookings: 0,
-            revenue: 0
-          });
-
-        if (insertError) {
-          console.warn('Error creating initial stats:', insertError);
-        }
       }
 
-      // Fetch recent inquiries
-      const { data: inquiriesData, error: inquiriesError } = await supabase
-        .from('vendor_inquiries')
-        .select('*')
-        .eq('vendor_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
+      setStats({
+        profileViews: statsData.profile_views || 0,
+        inquiries: statsData.inquiries || 0,
+        bookings: statsData.bookings || 0,
+        revenue: `$${(statsData.revenue || 0).toLocaleString()}`,
+      });
 
-      if (inquiriesError) {
-        console.warn('Error fetching inquiries:', inquiriesError);
-      }
+      const inquiriesData = vendorInquiriesTable
+        .find(inquiry => inquiry.vendor_id === user.id)
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 5);
 
-      if (inquiriesData) {
-        setRecentInquiries(inquiriesData.map(inquiry => ({
-          id: inquiry.id,
-          client: inquiry.client_name || 'Unknown Client',
-          event: inquiry.event_type || 'Event',
-          date: inquiry.event_date ? new Date(inquiry.event_date).toLocaleDateString() : new Date(inquiry.created_at).toLocaleDateString(),
-          status: inquiry.status || 'New',
-          created_at: inquiry.created_at,
-        })));
-      }
+      setRecentInquiries(inquiriesData.map(inquiry => ({
+        id: inquiry.id,
+        client: inquiry.client_name || 'Unknown Client',
+        event: inquiry.event_type || 'Event',
+        date: inquiry.event_date ? new Date(inquiry.event_date).toLocaleDateString() : new Date(inquiry.created_at).toLocaleDateString(),
+        status: inquiry.status || 'New',
+        created_at: inquiry.created_at,
+      })));
 
-      // Fetch upcoming bookings
       const today = new Date().toISOString().split('T')[0];
-      const { data: bookingsData, error: bookingsError } = await supabase
-        .from('vendor_bookings')
-        .select('*')
-        .eq('vendor_id', user.id)
-        .gte('event_date', today)
-        .order('event_date', { ascending: true })
-        .limit(5);
+      const bookingsData = vendorBookingsTable
+        .find(booking => booking.vendor_id === user.id && booking.event_date >= today)
+        .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime())
+        .slice(0, 5);
 
-      if (bookingsError) {
-        console.warn('Error fetching bookings:', bookingsError);
-      }
-
-      if (bookingsData) {
-        setUpcomingBookings(bookingsData.map(booking => ({
-          id: booking.id,
-          client: booking.client_name || 'Unknown Client',
-          event: booking.event_type || 'Event',
-          date: new Date(booking.event_date).toLocaleDateString(),
-          amount: `$${(booking.amount || 0).toLocaleString()}`,
-          status: booking.status || 'Confirmed',
-        })));
-      }
+      setUpcomingBookings(bookingsData.map(booking => ({
+        id: booking.id,
+        client: booking.client_name || 'Unknown Client',
+        event: booking.event_type || 'Event',
+        date: new Date(booking.event_date).toLocaleDateString(),
+        amount: `$${(booking.amount || 0).toLocaleString()}`,
+        status: booking.status || 'Confirmed',
+      })));
 
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
@@ -186,7 +142,6 @@ export const useVendorDashboard = () => {
 
   const calculateProfileCompletion = useCallback(() => {
     if (!vendorProfile) {
-      // Base completion from main profile
       const baseFields = [
         profile?.name,
         profile?.email,
@@ -207,7 +162,7 @@ export const useVendorDashboard = () => {
       vendorProfile.location?.city,
     ];
 
-    const completedFields = fields.filter(field => 
+    const completedFields = fields.filter(field =>
       field !== null && field !== undefined && field !== '' && field !== 0
     ).length;
 

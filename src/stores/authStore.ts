@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { supabase, type AuthUser, type Profile } from '../lib/supabase';
-import type { User, AuthError } from '@supabase/supabase-js';
+import * as localAuth from '../lib/localAuth';
+import { type AuthUser, type Profile } from '../lib/localDb';
 
 interface AuthState {
   user: AuthUser | null;
@@ -41,40 +41,13 @@ export const useAuthStore = create<AuthStore>()(
       // Actions
       signUp: async (email: string, password: string, userData) => {
         set({ loading: true, error: null });
-        
+
         try {
-          const { data, error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-              data: {
-                name: userData.name,
-                phone: userData.phone || '',
-                role: userData.role,
-                profile_image: userData.profileImage || '',
-              },
-            },
-          });
-
-          if (error) throw error;
-
-          if (data.user) {
-            // Profile will be created automatically by the trigger
-            // Wait a moment for the trigger to complete
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            await get().fetchProfile(data.user.id);
-            
-            // If vendor with profile image, update the profile
-            if (userData.role === 'vendor' && userData.profileImage) {
-              await supabase
-                .from('profiles')
-                .update({ profile_image: userData.profileImage })
-                .eq('id', data.user.id);
-            }
-          }
+          const profile = await localAuth.signUp(email, password, userData);
+          set({ profile, user: { id: profile.id, email: profile.email, profile } });
         } catch (error) {
-          const authError = error as AuthError;
-          set({ error: authError.message || 'Registration failed' });
+          const err = error as Error;
+          set({ error: err.message || 'Registration failed' });
           throw error;
         } finally {
           set({ loading: false });
@@ -83,21 +56,13 @@ export const useAuthStore = create<AuthStore>()(
 
       signIn: async (email: string, password: string) => {
         set({ loading: true, error: null });
-        
+
         try {
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-
-          if (error) throw error;
-
-          if (data.user) {
-            await get().fetchProfile(data.user.id);
-          }
+          const profile = await localAuth.signIn(email, password);
+          set({ profile, user: { id: profile.id, email: profile.email, profile } });
         } catch (error) {
-          const authError = error as AuthError;
-          set({ error: authError.message || 'Sign in failed' });
+          const err = error as Error;
+          set({ error: err.message || 'Sign in failed' });
           throw error;
         } finally {
           set({ loading: false });
@@ -106,15 +71,13 @@ export const useAuthStore = create<AuthStore>()(
 
       signOut: async () => {
         set({ loading: true, error: null });
-        
+
         try {
-          const { error } = await supabase.auth.signOut();
-          if (error) throw error;
-          
+          await localAuth.signOut();
           set({ user: null, profile: null });
         } catch (error) {
-          const authError = error as AuthError;
-          set({ error: authError.message || 'Sign out failed' });
+          const err = error as Error;
+          set({ error: err.message || 'Sign out failed' });
           throw error;
         } finally {
           set({ loading: false });
@@ -128,24 +91,14 @@ export const useAuthStore = create<AuthStore>()(
         }
 
         try {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('*, is_admin')
-            .eq('id', userId)
-            .single();
-
-          if (error) {
-            console.error('Error fetching profile:', error);
-            throw error;
+          const profile = localAuth.getProfile(userId);
+          if (!profile) {
+            throw new Error('Profile not found');
           }
-
-          if (data) {
-            const profile = data as Profile;
-            set({ 
-              profile,
-              user: { id: userId, email: profile.email, profile }
-            });
-          }
+          set({
+            profile,
+            user: { id: userId, email: profile.email, profile }
+          });
         } catch (error) {
           console.error('Error fetching profile:', error);
           set({ error: 'Failed to fetch user profile' });
@@ -159,25 +112,14 @@ export const useAuthStore = create<AuthStore>()(
         set({ loading: true, error: null });
 
         try {
-          const { data, error } = await supabase
-            .from('profiles')
-            .update(updates)
-            .eq('id', user.id)
-            .select()
-            .single();
-
-          if (error) throw error;
-
-          if (data) {
-            const updatedProfile = data as Profile;
-            set({ 
-              profile: updatedProfile,
-              user: { ...user, profile: updatedProfile }
-            });
-          }
+          const updatedProfile = localAuth.updateProfile(user.id, updates);
+          set({
+            profile: updatedProfile,
+            user: { ...user, profile: updatedProfile }
+          });
         } catch (error) {
-          const authError = error as AuthError;
-          set({ error: authError.message || 'Profile update failed' });
+          const err = error as Error;
+          set({ error: err.message || 'Profile update failed' });
           throw error;
         } finally {
           set({ loading: false });
@@ -192,24 +134,11 @@ export const useAuthStore = create<AuthStore>()(
         set({ loading: true });
 
         try {
-          const { data: { session }, error } = await supabase.auth.getSession();
-          
-          if (error) {
-            console.error('Error getting session:', error);
-          }
-          
-          if (session?.user) {
-            await get().fetchProfile(session.user.id);
-          }
+          const session = localAuth.getSession();
 
-          // Listen for auth changes
-          supabase.auth.onAuthStateChange(async (event, session) => {
-            if (event === 'SIGNED_IN' && session?.user) {
-              await get().fetchProfile(session.user.id);
-            } else if (event === 'SIGNED_OUT') {
-              set({ user: null, profile: null });
-            }
-          });
+          if (session?.userId) {
+            await get().fetchProfile(session.userId);
+          }
 
           set({ initialized: true });
         } catch (error) {

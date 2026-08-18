@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { supabase } from '../lib/supabase';
-import { VendorSubscription, SubscriptionPlan, PaystackPaymentData } from '../lib/types';
+import { vendorSubscriptionsTable } from '../lib/localDb';
+import { VendorSubscription, SubscriptionPlan } from '../lib/types';
 
 interface SubscriptionState {
   subscription: VendorSubscription | null;
@@ -86,21 +86,13 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
       // Actions
       fetchSubscription: async (vendorId: string) => {
         set({ loading: true, error: null });
-        
+
         try {
-          const { data, error } = await supabase
-            .from('vendor_subscriptions')
-            .select('*')
-            .eq('vendor_id', vendorId)
-            .eq('status', 'active')
-            .order('created_at', { ascending: false })
-            .maybeSingle();
+          const active = vendorSubscriptionsTable
+            .find(sub => sub.vendor_id === vendorId && sub.status === 'active')
+            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-          if (error && error.code !== 'PGRST116') {
-            throw error;
-          }
-
-          set({ subscription: data });
+          set({ subscription: active[0] ?? null });
         } catch (error) {
           console.error('Error fetching subscription:', error);
           set({ error: 'Failed to fetch subscription data' });
@@ -230,11 +222,11 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
 
       verifyPayment: async (reference: string) => {
         set({ loading: true, error: null });
-        
+
         try {
-          /* 
+          /*
           PAYSTACK VERIFICATION - COMMENT FOR LATER USE:
-          
+
           const response = await fetch(`/api/subscription/verify/${reference}`, {
             method: 'POST',
             headers: {
@@ -244,20 +236,51 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
           });
 
           const result = await response.json();
-          
+
           if (result.success) {
             // Refresh subscription data
             await get().fetchSubscription(result.vendorId);
             return true;
           }
-          
+
           return false;
           */
 
-          // For demo purposes, simulate successful verification
-          console.log('Payment verification would be handled for reference:', reference);
+          // No backend to confirm payment against, so parse the reference we
+          // generated in initiatePayment (sub_<vendorId>_<planId>_<timestamp>)
+          // and persist the subscription locally so the UI reflects the change.
+          const match = reference.match(/^sub_(.+)_(basic|premium|enterprise)_\d+$/);
+          if (!match) {
+            throw new Error('Invalid payment reference');
+          }
+
+          const [, vendorId, planId] = match;
+          const plan = get().plans.find(p => p.id === planId);
+          if (!plan) {
+            throw new Error('Plan not found');
+          }
+
+          const existingActive = vendorSubscriptionsTable.find(
+            sub => sub.vendor_id === vendorId && sub.status === 'active'
+          );
+          existingActive.forEach(sub => vendorSubscriptionsTable.update(sub.id, { status: 'cancelled' }));
+
+          const startDate = new Date();
+          const endDate = new Date();
+          endDate.setMonth(endDate.getMonth() + plan.duration);
+
+          const subscription = vendorSubscriptionsTable.insert({
+            vendor_id: vendorId,
+            plan_type: plan.type,
+            status: 'active',
+            start_date: startDate.toISOString(),
+            end_date: endDate.toISOString(),
+            payment_reference: reference,
+          });
+
+          set({ subscription });
           return true;
-          
+
         } catch (error) {
           console.error('Error verifying payment:', error);
           set({ error: 'Failed to verify payment' });
@@ -269,17 +292,10 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
 
       cancelSubscription: async (subscriptionId: string) => {
         set({ loading: true, error: null });
-        
-        try {
-          const { error } = await supabase
-            .from('vendor_subscriptions')
-            .update({ 
-              status: 'cancelled',
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', subscriptionId);
 
-          if (error) throw error;
+        try {
+          const updated = vendorSubscriptionsTable.update(subscriptionId, { status: 'cancelled' });
+          if (!updated) throw new Error('Subscription not found');
 
           set({ subscription: null });
         } catch (error) {

@@ -1,7 +1,53 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Vendor, SearchFilters } from '../lib/types';
-import { supabase } from '../lib/supabase';
+import { profilesTable, vendorProfilesTable, vendorSubscriptionsTable, VendorProfile, Profile, VendorSubscription } from '../lib/localDb';
 import { getCategoryLabel } from '../lib/utils';
+
+const planOrder = { enterprise: 3, premium: 2, basic: 1 } as const;
+
+function toVendor(vp: VendorProfile, ownerProfile: Profile, subscription?: VendorSubscription): Vendor {
+  return {
+    id: vp.user_id,
+    name: vp.business_name || ownerProfile.name || 'Unnamed Business',
+    category: (vp.category || 'planning') as Vendor['category'],
+    description: vp.description || 'No description provided',
+    services: vp.services || [],
+    location: {
+      city: vp.location?.city || 'Unknown',
+      state: vp.location?.state || 'Unknown',
+      address: vp.location?.address || undefined,
+    },
+    contact: {
+      email: ownerProfile.email,
+      phone: ownerProfile.phone || '',
+      website: undefined,
+    },
+    pricing: {
+      min: vp.pricing?.min || 0,
+      max: vp.pricing?.max || 0,
+      currency: ownerProfile.currency || 'USD',
+      unit: vp.pricing?.unit || 'per event',
+    },
+    rating: 4.5 + Math.random() * 0.5, // Mock rating for now
+    reviewCount: Math.floor(Math.random() * 200) + 10, // Mock review count
+    images: vp.profile_image ? [vp.profile_image] : [
+      'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800'
+    ],
+    featured: !!subscription,
+    verified: vp.verified || false,
+    availability: vp.availability ?? true,
+    createdAt: new Date(vp.created_at),
+    subscription: subscription
+      ? { ...subscription }
+      : undefined,
+  };
+}
+
+function getActiveSubscription(vendorId: string): VendorSubscription | undefined {
+  return vendorSubscriptionsTable.find(
+    sub => sub.vendor_id === vendorId && sub.status === 'active' && new Date(sub.end_date) > new Date()
+  )[0];
+}
 
 export const useVendors = (filters?: SearchFilters, searchQuery?: string) => {
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -11,107 +57,29 @@ export const useVendors = (filters?: SearchFilters, searchQuery?: string) => {
   const loadVendors = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
-      // Fetch vendor profiles with basic profile information
-      const { data: vendorProfiles, error: vendorError } = await supabase
-        .from('vendor_profiles')
-        .select(`
-          *,
-          profiles!vendor_profiles_user_id_fkey (
-            id,
-            name,
-            email,
-            phone,
-            profile_image,
-            currency
-          )
-        `);
+      const vendorProfiles = vendorProfilesTable.getAll();
 
-      if (vendorError) {
-        console.error('Error loading vendor profiles:', vendorError);
-        throw vendorError;
-      }
-
-      // Fetch vendor subscriptions separately
-      const vendorIds = vendorProfiles?.map(vp => vp.user_id).filter(Boolean) || [];
-      let subscriptionsData: any[] = [];
-      
-      if (vendorIds.length > 0) {
-        const { data: subscriptions, error: subscriptionsError } = await supabase
-          .from('vendor_subscriptions')
-          .select('*')
-          .in('vendor_id', vendorIds);
-
-        if (subscriptionsError) {
-          console.warn('Error loading subscriptions:', subscriptionsError);
-        } else {
-          subscriptionsData = subscriptions || [];
-        }
-      }
-
-      // Transform the data to match our Vendor interface
-      const transformedVendors: Vendor[] = (vendorProfiles || [])
-        .filter(vp => vp.profiles) // Only include vendors with valid profiles
+      const transformedVendors: Vendor[] = vendorProfiles
         .map(vp => {
-          // Get active subscription for this vendor
-          const vendorSubscriptions = subscriptionsData.filter(
-            sub => sub.vendor_id === vp.user_id
-          );
-          
-          const activeSubscription = vendorSubscriptions.find(
-            sub => sub.status === 'active' && new Date(sub.end_date) > new Date()
-          );
+          const ownerProfile = profilesTable.findOne(p => p.id === vp.user_id);
+          if (!ownerProfile) return null;
 
-          return {
-            id: vp.user_id,
-            name: vp.business_name || vp.profiles.name || 'Unnamed Business',
-            category: vp.category || 'planning',
-            description: vp.description || 'No description provided',
-            services: vp.services || [],
-            location: {
-              city: vp.location?.city || 'Unknown',
-              state: vp.location?.state || 'Unknown',
-              address: vp.location?.address || undefined,
-            },
-            contact: {
-              email: vp.profiles.email,
-              phone: vp.profiles.phone || '',
-              website: undefined,
-            },
-            pricing: {
-              min: vp.pricing?.min || 0,
-              max: vp.pricing?.max || 0,
-              currency: vp.profiles.currency || 'USD', // Use vendor's preferred currency
-              unit: vp.pricing?.unit || 'per event',
-            },
-            rating: 4.5 + Math.random() * 0.5, // Mock rating for now
-            reviewCount: Math.floor(Math.random() * 200) + 10, // Mock review count
-            images: vp.profile_image ? [vp.profile_image] : [
-              'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800'
-            ],
-            featured: !!activeSubscription, // Featured if has active subscription
-            verified: vp.verified || false,
-            availability: vp.availability ?? true,
-            createdAt: new Date(vp.created_at),
-            subscription: activeSubscription || undefined,
-          };
+          const activeSubscription = getActiveSubscription(vp.user_id);
+          return toVendor(vp, ownerProfile, activeSubscription);
         })
-        // Sort by subscription status (premium vendors first)
+        .filter((v): v is Vendor => v !== null)
         .sort((a, b) => {
-          // Premium vendors with active subscriptions first
           if (a.subscription && !b.subscription) return -1;
           if (!a.subscription && b.subscription) return 1;
-          
-          // Then by subscription plan type (enterprise > premium > basic)
+
           if (a.subscription && b.subscription) {
-            const planOrder = { enterprise: 3, premium: 2, basic: 1 };
             const aOrder = planOrder[a.subscription.plan_type as keyof typeof planOrder] || 0;
             const bOrder = planOrder[b.subscription.plan_type as keyof typeof planOrder] || 0;
             if (aOrder !== bOrder) return bOrder - aOrder;
           }
-          
-          // Finally by rating
+
           return b.rating - a.rating;
         });
 
@@ -131,7 +99,6 @@ export const useVendors = (filters?: SearchFilters, searchQuery?: string) => {
   const filteredVendors = useMemo(() => {
     let filtered = vendors;
 
-    // Apply search query
     if (searchQuery && searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(vendor =>
@@ -144,7 +111,6 @@ export const useVendors = (filters?: SearchFilters, searchQuery?: string) => {
       );
     }
 
-    // Apply filters
     if (filters) {
       if (filters.category) {
         filtered = filtered.filter(vendor => vendor.category === filters.category);
@@ -198,88 +164,22 @@ export const useVendor = (id: string) => {
       setLoading(false);
       return;
     }
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
-      // Fetch specific vendor profile with basic profile information
-      const { data: vendorProfile, error: vendorError } = await supabase
-        .from('vendor_profiles')
-        .select(`
-          *,
-          profiles!vendor_profiles_user_id_fkey (
-            id,
-            name,
-            email,
-            phone,
-            profile_image,
-            currency
-          )
-        `)
-        .eq('user_id', id)
-        .maybeSingle();
+      const vendorProfile = vendorProfilesTable.findOne(vp => vp.user_id === id);
+      const ownerProfile = vendorProfile ? profilesTable.findOne(p => p.id === id) : undefined;
 
-      if (vendorError) {
-        throw vendorError;
-      }
-
-      if (!vendorProfile || !vendorProfile.profiles) {
+      if (!vendorProfile || !ownerProfile) {
         setError('Vendor not found');
+        setVendor(null);
         return;
       }
 
-      // Fetch vendor subscriptions separately
-      const { data: subscriptions, error: subscriptionsError } = await supabase
-        .from('vendor_subscriptions')
-        .select('*')
-        .eq('vendor_id', id);
-
-      if (subscriptionsError) {
-        console.warn('Error loading subscriptions:', subscriptionsError);
-      }
-
-      // Get active subscription
-      const activeSubscription = subscriptions?.find(
-        sub => sub.status === 'active' && new Date(sub.end_date) > new Date()
-      );
-
-      // Transform the data to match our Vendor interface
-      const transformedVendor: Vendor = {
-        id: vendorProfile.user_id,
-        name: vendorProfile.business_name || vendorProfile.profiles.name || 'Unnamed Business',
-        category: vendorProfile.category || 'planning',
-        description: vendorProfile.description || 'No description provided',
-        services: vendorProfile.services || [],
-        location: {
-          city: vendorProfile.location?.city || 'Unknown',
-          state: vendorProfile.location?.state || 'Unknown',
-          address: vendorProfile.location?.address || undefined,
-        },
-        contact: {
-          email: vendorProfile.profiles.email,
-          phone: vendorProfile.profiles.phone || '',
-          website: undefined,
-        },
-        pricing: {
-          min: vendorProfile.pricing?.min || 0,
-          max: vendorProfile.pricing?.max || 0,
-          currency: vendorProfile.profiles.currency || 'USD', // Use vendor's preferred currency
-          unit: vendorProfile.pricing?.unit || 'per event',
-        },
-        rating: 4.5 + Math.random() * 0.5, // Mock rating for now
-        reviewCount: Math.floor(Math.random() * 200) + 10, // Mock review count
-        images: vendorProfile.profile_image ? [vendorProfile.profile_image] : [
-          'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=800'
-        ],
-        featured: !!activeSubscription, // Featured if has active subscription
-        verified: vendorProfile.verified || false,
-        availability: vendorProfile.availability ?? true,
-        createdAt: new Date(vendorProfile.created_at),
-        subscription: activeSubscription || undefined,
-      };
-
-      setVendor(transformedVendor);
+      const activeSubscription = getActiveSubscription(id);
+      setVendor(toVendor(vendorProfile, ownerProfile, activeSubscription));
     } catch (err) {
       setError('Failed to load vendor');
       console.error('Error loading vendor:', err);

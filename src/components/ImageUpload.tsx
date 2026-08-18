@@ -1,7 +1,5 @@
 import React, { useState, useRef } from 'react';
 import { Upload, X, Camera, AlertCircle } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import { useAuthStore } from '../stores/authStore';
 import Button from './ui/Button';
 
 interface ImageUploadProps {
@@ -17,7 +15,6 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   className = '',
   size = 'md',
 }) => {
-  const { user } = useAuthStore();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -27,6 +24,14 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
     md: 'w-24 h-24',
     lg: 'w-32 h-32',
   };
+
+  const readAsDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error('Failed to read image file'));
+      reader.readAsDataURL(file);
+    });
 
   const uploadImage = async (file: File) => {
     setUploading(true);
@@ -42,41 +47,9 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
         throw new Error('Image must be less than 5MB');
       }
 
-      // Create unique filename - use timestamp if no user (for registration)
-      const userId = user?.id || `temp_${Date.now()}`;
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${userId}/profile-${Date.now()}.${fileExt}`;
-
-      // Delete old image if exists
-      if (currentImage && user?.id && currentImage.includes(user.id)) {
-        const oldPath = currentImage.split('/').pop();
-        if (oldPath) {
-          try {
-            await supabase.storage
-            .from('vendor-profiles')
-            .remove([`${userId}/${oldPath}`]);
-          } catch (deleteError) {
-            console.warn('Could not delete old image:', deleteError);
-          }
-        }
-      }
-
-      // Upload new image
-      const { data, error: uploadError } = await supabase.storage
-        .from('vendor-profiles')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: true,
-        });
-
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('vendor-profiles')
-        .getPublicUrl(fileName);
-
-      onImageChange(publicUrl);
+      // No storage backend yet - embed the image directly as a data URL.
+      const dataUrl = await readAsDataUrl(file);
+      onImageChange(dataUrl);
     } catch (error) {
       console.error('Error uploading image:', error);
       setError(error instanceof Error ? error.message : 'Failed to upload image');

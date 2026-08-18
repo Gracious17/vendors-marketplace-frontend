@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Save, Eye, Trash2, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
-import { supabase } from '../lib/supabase';
+import { vendorProfilesTable } from '../lib/localDb';
 import { VendorCategory } from '../lib/types';
 import { getCategoryLabel } from '../lib/utils';
 import Button from '../components/ui/Button';
@@ -69,21 +69,13 @@ const VendorProfileEdit: React.FC = () => {
     if (!user?.id) return;
 
     try {
-      const { data, error } = await supabase
-        .from('vendor_profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (error && error.code !== 'PGRST116') {
-        throw error;
-      }
+      const data = vendorProfilesTable.findOne(vp => vp.user_id === user.id);
 
       if (data) {
         setFormData({
           id: data.id,
           business_name: data.business_name || '',
-          category: data.category || '',
+          category: (data.category || '') as VendorCategory | '',
           description: data.description || '',
           services: data.services || [''],
           location: data.location || { city: '', state: '', address: '' },
@@ -186,9 +178,10 @@ const VendorProfileEdit: React.FC = () => {
     setSaving(true);
     setError(null);
 
+    if (!user?.id) return;
+
     try {
       const profileData = {
-        user_id: user?.id,
         business_name: formData.business_name.trim(),
         category: formData.category,
         description: formData.description.trim(),
@@ -201,24 +194,18 @@ const VendorProfileEdit: React.FC = () => {
 
       if (formData.id) {
         // Update existing profile
-        const { error } = await supabase
-          .from('vendor_profiles')
-          .update(profileData)
-          .eq('id', formData.id);
-
-        if (error) throw error;
+        const updated = vendorProfilesTable.update(formData.id, profileData);
+        if (!updated) throw new Error('Profile not found');
       } else {
         // Create new profile
-        const { data, error } = await supabase
-          .from('vendor_profiles')
-          .insert(profileData)
-          .select()
-          .single();
-
-        if (error) throw error;
-        if (data) {
-          setFormData(prev => ({ ...prev, id: data.id }));
-        }
+        const created = vendorProfilesTable.insert({
+          user_id: user.id,
+          ...profileData,
+          images: formData.profile_image ? [formData.profile_image] : [],
+          verified: false,
+          badges: [],
+        });
+        setFormData(prev => ({ ...prev, id: created.id }));
       }
 
       setSuccess('Profile saved successfully!');
@@ -238,13 +225,7 @@ const VendorProfileEdit: React.FC = () => {
     setError(null);
 
     try {
-      const { error } = await supabase
-        .from('vendor_profiles')
-        .delete()
-        .eq('id', formData.id);
-
-      if (error) throw error;
-
+      vendorProfilesTable.remove(formData.id);
       navigate('/dashboard/vendor');
     } catch (err) {
       console.error('Error deleting profile:', err);

@@ -7,7 +7,7 @@ import {
   TrendingUp, DollarSign, Calendar, MessageCircle
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
-import { supabase } from '../lib/supabase';
+import { profilesTable, vendorProfilesTable, vendorSubscriptionsTable } from '../lib/localDb';
 import { formatCurrency, formatDate } from '../lib/utils';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -91,31 +91,19 @@ const AdminDashboard: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      // Fetch user counts
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('role, created_at');
+      const profiles = profilesTable.getAll();
+      const subscriptions = vendorSubscriptionsTable.find(s => s.status === 'active');
 
-      if (profilesError) throw profilesError;
-
-      // Fetch subscription data
-      const { data: subscriptions, error: subscriptionsError } = await supabase
-        .from('vendor_subscriptions')
-        .select('status, plan_type')
-        .eq('status', 'active');
-
-      if (subscriptionsError) throw subscriptionsError;
-
-      const totalUsers = profiles?.length || 0;
-      const totalVendors = profiles?.filter(p => p.role === 'vendor').length || 0;
-      const totalClients = profiles?.filter(p => p.role === 'client').length || 0;
-      const activeSubscriptions = subscriptions?.length || 0;
+      const totalUsers = profiles.length;
+      const totalVendors = profiles.filter(p => p.role === 'vendor').length;
+      const totalClients = profiles.filter(p => p.role === 'client').length;
+      const activeSubscriptions = subscriptions.length;
 
       // Calculate monthly growth (mock calculation)
       const currentMonth = new Date().getMonth();
-      const currentMonthUsers = profiles?.filter(p => 
+      const currentMonthUsers = profiles.filter(p =>
         new Date(p.created_at).getMonth() === currentMonth
-      ).length || 0;
+      ).length;
       const monthlyGrowth = totalUsers > 0 ? (currentMonthUsers / totalUsers) * 100 : 0;
 
       setStats({
@@ -133,13 +121,10 @@ const AdminDashboard: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setUsers(data || []);
+      const data = profilesTable
+        .getAll()
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setUsers(data);
     } catch (error) {
       console.error('Error fetching users:', error);
     }
@@ -147,29 +132,24 @@ const AdminDashboard: React.FC = () => {
 
   const fetchVendors = async () => {
     try {
-      const { data, error } = await supabase
-        .from('vendor_profiles')
-        .select(`
-          *,
-          profiles!vendor_profiles_user_id_fkey (
-            name,
-            email
-          ),
-          vendor_subscriptions (
-            plan_type,
-            status,
-            end_date
-          )
-        `)
-        .order('created_at', { ascending: false });
+      const data = vendorProfilesTable
+        .getAll()
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-      if (error) throw error;
+      const vendorsWithSubscriptions = data.map(vendor => {
+        const ownerProfile = profilesTable.findOne(p => p.id === vendor.user_id);
+        const subscription = vendorSubscriptionsTable.findOne(
+          s => s.vendor_id === vendor.user_id && s.status === 'active'
+        );
 
-      const vendorsWithSubscriptions = (data || []).map(vendor => ({
-        ...vendor,
-        profile: vendor.profiles,
-        subscription: vendor.vendor_subscriptions?.[0] || null,
-      }));
+        return {
+          ...vendor,
+          profile: ownerProfile ? { name: ownerProfile.name, email: ownerProfile.email } : { name: '', email: '' },
+          subscription: subscription
+            ? { plan_type: subscription.plan_type, status: subscription.status, end_date: subscription.end_date }
+            : null,
+        };
+      });
 
       setVendors(vendorsWithSubscriptions);
     } catch (error) {
@@ -179,13 +159,7 @@ const AdminDashboard: React.FC = () => {
 
   const toggleUserAdminStatus = async (userId: string, currentStatus: boolean) => {
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ is_admin: !currentStatus })
-        .eq('id', userId);
-
-      if (error) throw error;
-      
+      profilesTable.update(userId, { is_admin: !currentStatus });
       await fetchUsers();
     } catch (error) {
       console.error('Error updating admin status:', error);
@@ -194,13 +168,7 @@ const AdminDashboard: React.FC = () => {
 
   const toggleVendorVerification = async (vendorId: string, currentStatus: boolean) => {
     try {
-      const { error } = await supabase
-        .from('vendor_profiles')
-        .update({ verified: !currentStatus })
-        .eq('id', vendorId);
-
-      if (error) throw error;
-      
+      vendorProfilesTable.update(vendorId, { verified: !currentStatus });
       await fetchVendors();
     } catch (error) {
       console.error('Error updating verification status:', error);
